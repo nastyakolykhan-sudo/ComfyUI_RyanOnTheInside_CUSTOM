@@ -259,13 +259,20 @@ class ACEStep15NativeCoverGuider(ACEStep15BaseGuider):
             semantic_hints = extract_semantic_hints(model, source_latent, verbose=True)
             logger.debug(f"[ACE15_NATIVE_COVER]   Auto-extracted semantic_hints shape: {semantic_hints.shape}")
 
+        # Match semantic_hints length to source_latent
+        target_len = source_latent.shape[2]
+        if semantic_hints.shape[2] != target_len:
+            logger.debug(f"[ACE15_NATIVE_COVER]   Adjusting semantic_hints from length {semantic_hints.shape[2]} to {target_len}")
+            if semantic_hints.shape[2] > target_len:
+                semantic_hints = semantic_hints[:, :, :target_len]
+            else:
+                semantic_hints = torch.nn.functional.pad(semantic_hints, (0, target_len - semantic_hints.shape[2]))
+
         self.semantic_hints = semantic_hints
 
         logger.debug(f"[ACE15_NATIVE_COVER]   semantic_hints stats: mean={semantic_hints.mean():.4f}, std={semantic_hints.std():.4f}")
         if semantic_hints.std() < 0.01:
             logger.debug(f"[ACE15_NATIVE_COVER]   WARNING: semantic_hints have very low variance ({semantic_hints.std():.6f}) - may be invalid!")
-        if semantic_hints.shape != source_latent.shape:
-            logger.debug(f"[ACE15_NATIVE_COVER]   WARNING: semantic_hints shape {semantic_hints.shape} != source_latent shape {source_latent.shape}")
 
         self.chunk_masks = torch.ones_like(source_latent)
         self.src_latents = source_latent.clone()
@@ -314,6 +321,17 @@ class ACEStep15NativeExtractGuider(ACEStep15BaseGuider):
         super().__init__(model, positive, negative, cfg, source_latent, reference_latent)
 
         self.track_name = track_name
+
+        # Match semantic_hints length to source_latent
+        if semantic_hints is not None:
+            target_len = source_latent.shape[2]
+            if semantic_hints.shape[2] != target_len:
+                logger.debug(f"[ACE15_NATIVE_EXTRACT]   Adjusting semantic_hints from length {semantic_hints.shape[2]} to {target_len}")
+                if semantic_hints.shape[2] > target_len:
+                    semantic_hints = semantic_hints[:, :, :target_len]
+                else:
+                    semantic_hints = torch.nn.functional.pad(semantic_hints, (0, target_len - semantic_hints.shape[2]))
+
         self.semantic_hints = semantic_hints
 
         logger.debug(f"[ACE15_NATIVE_EXTRACT] Initializing")
