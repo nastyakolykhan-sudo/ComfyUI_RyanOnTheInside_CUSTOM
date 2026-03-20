@@ -812,6 +812,7 @@ class ACEStep15NativeCoverGuiderNode:
     def get_guider(self, model, positive, negative, cfg, source_latents, semantic_hints=None, reference_latent=None):
         patches.apply_acestep_patches()
         source_tensor = source_latents["samples"]
+        noise_mask = source_latents.get("noise_mask", None)
 
         # Validate v1.5 shape: (batch, 64, length)
         if len(source_tensor.shape) != 3 or source_tensor.shape[1] != 64:
@@ -822,6 +823,8 @@ class ACEStep15NativeCoverGuiderNode:
 
         logger.debug(f"[ACE15_COVER_NODE] Creating guider")
         logger.debug(f"[ACE15_COVER_NODE]   source_tensor.shape: {source_tensor.shape}")
+        if noise_mask is not None:
+            logger.debug(f"[ACE15_COVER_NODE]   noise_mask found: {noise_mask.shape}")
         if semantic_hints is not None:
             logger.debug(f"[ACE15_COVER_NODE]   semantic_hints provided externally: {semantic_hints.shape}")
         else:
@@ -830,7 +833,8 @@ class ACEStep15NativeCoverGuiderNode:
             logger.debug(f"[ACE15_COVER_NODE]   reference_latent provided: {ref_tensor.shape}")
 
         guider = ACEStep15NativeCoverGuider(
-            model, positive, negative, cfg, source_tensor, semantic_hints, reference_latent=ref_tensor
+            model, positive, negative, cfg, source_tensor, semantic_hints,
+            reference_latent=ref_tensor, noise_mask=noise_mask
         )
 
         return (guider,)

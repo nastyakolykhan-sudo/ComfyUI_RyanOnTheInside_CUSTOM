@@ -245,7 +245,7 @@ class ACEStep15NativeCoverGuider(ACEStep15BaseGuider):
     sources), use ACEStep15SemanticExtractor and ACEStep15SemanticHintsBlend.
     """
 
-    def __init__(self, model, positive, negative, cfg, source_latent, semantic_hints=None, reference_latent=None):
+    def __init__(self, model, positive, negative, cfg, source_latent, semantic_hints=None, reference_latent=None, noise_mask=None):
         super().__init__(model, positive, negative, cfg, source_latent, reference_latent)
 
         logger.debug(f"[ACE15_NATIVE_COVER] Initializing")
@@ -276,12 +276,20 @@ class ACEStep15NativeCoverGuider(ACEStep15BaseGuider):
 
         self.chunk_masks = torch.ones_like(source_latent)
         self.src_latents = source_latent.clone()
+        self._noise_mask = noise_mask
 
         logger.debug(f"[ACE15_NATIVE_COVER]   chunk_masks.shape: {self.chunk_masks.shape}")
         logger.debug(f"[ACE15_NATIVE_COVER]   mask sum: {self.chunk_masks.sum().item()} (all 1s)")
 
     def _get_wrapper_log_tag(self):
         return "ACE15_COVER"
+
+    def sample(self, noise, latent_image, sampler, sigmas, denoise_mask=None, callback=None, disable_pbar=False, seed=None):
+        # If no denoise_mask from SamplerCustomAdvanced but we have a noise_mask
+        # from SetLatentNoiseMask on the source_latents, use it.
+        if denoise_mask is None and self._noise_mask is not None:
+            denoise_mask = self._noise_mask
+        return super().sample(noise, latent_image, sampler, sigmas, denoise_mask, callback, disable_pbar, seed)
 
     def _get_extra_cond(self, input_batch_size, device, dtype):
         extra = {}
