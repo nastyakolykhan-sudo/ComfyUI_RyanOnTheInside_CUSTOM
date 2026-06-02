@@ -97,26 +97,35 @@ class SchedulerNode(RyanOnTheInside):
     
     def process_values(self, feature, lower_threshold, upper_threshold, invert_output):
         values = [feature.get_value_at_frame(i) for i in range(feature.frame_count)]
-        
-        # Calculate the range for normalization
-        range_size = upper_threshold - lower_threshold
-        
+        n = len(values)
+
+        # Normalize list inputs to per-frame lists, scalars to repeated lists
+        lower_list = lower_threshold if isinstance(lower_threshold, (list, tuple)) else [lower_threshold] * n
+        upper_list = upper_threshold if isinstance(upper_threshold, (list, tuple)) else [upper_threshold] * n
+
         # Use feature.min_value and feature.max_value if available, otherwise use actual min/max
         min_val = getattr(feature, 'min_value', min(values))
         max_val = getattr(feature, 'max_value', max(values))
-        
-        # Normalize values to fit between lower and upper threshold
-        if max_val == min_val:
-            normalized = [lower_threshold for _ in values]  # All values are the same
-        else:
-            normalized = [
-                lower_threshold + (range_size * (v - min_val) / (max_val - min_val))
-                for v in values
-            ]
-        
+
+        # Normalize values to fit between lower and upper threshold (per-frame aware)
+        normalized = []
+        for i, v in enumerate(values):
+            lo = lower_list[i] if i < len(lower_list) else lower_list[-1]
+            hi = upper_list[i] if i < len(upper_list) else upper_list[-1]
+            range_size = hi - lo
+            if max_val == min_val:
+                normalized.append(lo)
+            else:
+                normalized.append(lo + (range_size * (v - min_val) / (max_val - min_val)))
+
         if invert_output:
-            normalized = [upper_threshold - (v - lower_threshold) for v in normalized]
-                
+            result = []
+            for i, v in enumerate(normalized):
+                lo = lower_list[i] if i < len(lower_list) else lower_list[-1]
+                hi = upper_list[i] if i < len(upper_list) else upper_list[-1]
+                result.append(hi - (v - lo))
+            normalized = result
+
         return normalized
 
 @apply_tooltips
