@@ -27,8 +27,8 @@ class AudioPad(AudioUtility):
         return {
             "required": {
                 "audio": ("AUDIO",),
-                "pad_left": ("INT", {"default": 0, "min": 0, "max": 44100, "step": 1}),
-                "pad_right": ("INT", {"default": 0, "min": 0, "max": 44100, "step": 1}),
+                "pad_start": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 3600.0, "step": 0.1}),
+                "pad_end": ("FLOAT", {"default": 0.0, "min": 0.0, "max": 3600.0, "step": 0.1}),
                 "pad_mode": (["constant", "reflect", "replicate", "circular"],),
             }
         }
@@ -36,9 +36,11 @@ class AudioPad(AudioUtility):
     RETURN_TYPES = ("AUDIO",)
     FUNCTION = "pad_audio_node"
 
-    def pad_audio_node(self, audio, pad_left, pad_right, pad_mode):
+    def pad_audio_node(self, audio, pad_start, pad_end, pad_mode):
         waveform, sample_rate = audio['waveform'], audio['sample_rate']
-        padded_waveform = pad_audio(waveform, pad_left, pad_right, pad_mode)
+        pad_left_samples  = int(pad_start * sample_rate)
+        pad_right_samples = int(pad_end   * sample_rate)
+        padded_waveform = pad_audio(waveform, pad_left_samples, pad_right_samples, pad_mode)
         return ({"waveform": padded_waveform, "sample_rate": sample_rate},)
 
 @apply_tooltips
